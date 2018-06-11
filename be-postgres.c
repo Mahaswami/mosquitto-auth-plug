@@ -169,8 +169,7 @@ int be_pg_getuser(void *handle, const char *username, const char *password, char
 	long nrows;
 	PGresult *res = NULL;
 
-	_log(LOG_DEBUG, "xxxx GETTING USERS: %s", username);
-        _log(LOG_DEBUG, "RUNNING QUERY: %s", conf->userquery);
+	_log(LOG_DEBUG, "GETTING USERS: %s", username);
 
 	if (!conf || !conf->userquery || !username || !*username)
 		return BACKEND_DEFER;

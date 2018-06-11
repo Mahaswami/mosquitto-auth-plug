@@ -165,20 +165,22 @@ void be_pg_destroy(void *handle)
 int be_pg_getuser(void *handle, const char *username, const char *password, char **phash)
 {
 	struct pg_backend *conf = (struct pg_backend *)handle;
-	char *value = NULL, *v = NULL;
+	char *value = NULL;  //, *v = NULL;
 	long nrows;
 	PGresult *res = NULL;
 
-	_log(LOG_DEBUG, "GETTING USERS: %s", username);
+	_log(LOG_DEBUG, "xxxx GETTING USERS: %s", username);
+        _log(LOG_DEBUG, "RUNNING QUERY: %s", conf->userquery);
 
 	if (!conf || !conf->userquery || !username || !*username)
 		return BACKEND_DEFER;
 
-	const char *values[1] = {username};
-	int lengths[1] = {strlen(username)};
-	int binary[1] = {0};
+	const char *values[] = {username,password};
+	int lengths[] = {strlen(username),strlen(password)};
+	int binary[] = {0,0};
 
-	res = PQexecParams(conf->conn, conf->userquery, 1, NULL, values, lengths, binary, 0);
+
+	res = PQexecParams(conf->conn, conf->userquery, 2, NULL, values, lengths, binary, 0);
 
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		_log(LOG_DEBUG, "%s\n", PQresultErrorMessage(res));
@@ -194,6 +196,11 @@ int be_pg_getuser(void *handle, const char *username, const char *password, char
 		//DEBUG fprintf(stderr, "rowcount = %ld; not ok\n", nrows);
 		goto out;
 	}
+        PQclear(res);
+
+	value =  NULL;
+        return BACKEND_ALLOW;
+        /*
 	if (PQnfields(res) != 1) {
 		//DEBUG fprintf(stderr, "numfields not ok\n");
 		goto out;
@@ -202,7 +209,7 @@ int be_pg_getuser(void *handle, const char *username, const char *password, char
 		goto out;
 	}	
 	value = (v) ? strdup(v) : NULL;
-
+	*/
 
 out:
 
@@ -284,77 +291,7 @@ out:
 
 int be_pg_aclcheck(void *handle, const char *clientid, const char *username, const char *topic, int acc)
 {
-	struct pg_backend *conf = (struct pg_backend *)handle;
-	char *v = NULL;
-	int match = BACKEND_DEFER;
-	bool bf;
-	PGresult *res = NULL;
-
-	_log(LOG_DEBUG, "USERNAME: %s, TOPIC: %s, acc: %d", username, topic, acc);
-
-
-	if (!conf || !conf->aclquery)
-		return BACKEND_DEFER;
-
-	const int buflen = 11;
-	//10 for 2^32 + 1
-	char accbuffer[buflen];
-	snprintf(accbuffer, buflen, "%d", acc);
-
-	const char *values[2] = {username, accbuffer};
-	int lengths[2] = {strlen(username), buflen};
-
-	res = PQexecParams(conf->conn, conf->aclquery, 2, NULL, values, lengths, NULL, 0);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-		fprintf(stderr, "%s\n", PQresultErrorMessage(res));
-		match = BACKEND_ERROR;
-
-		//try to reset connection if failing because of database connection lost
-		if(PQstatus(conf->conn) == CONNECTION_BAD){
-			_log(LOG_NOTICE, "Noticed a postgres connection loss. Trying to reconnect ...\n");
-			//try to reinitiate the database connection
-			PQreset(conf->conn);
-		}
-
-		goto out;
-	}
-	if (PQnfields(res) != 1) {
-		fprintf(stderr, "numfields not ok\n");
-		goto out;
-	}
-	int rec_count = PQntuples(res);
-	int row = 0;
-	for (row = 0; row < rec_count; row++) {
-		if ((v = PQgetvalue(res, row, 0)) != NULL) {
-
-			/*
-			 * Check mosquitto_match_topic. If true, if true, set
-			 * match and break out of loop.
-			 */
-
-			char *expanded;
-
-			t_expand(clientid, username, v, &expanded);
-			if (expanded && *expanded) {
-				mosquitto_topic_matches_sub(expanded, topic, &bf);
-				if (bf) match = BACKEND_ALLOW;
-				_log(LOG_DEBUG, "  postgres: topic_matches(%s, %s) == %d",
-				     expanded, v, bf);
-
-				free(expanded);
-			}
-		}
-		if (match != BACKEND_DEFER) {
-			break;
-		}
-	}
-
-out:
-
-	PQclear(res);
-
-	return (match);
+	return BACKEND_ALLOW;   //Venkat: Commenting out the ACL checks for now
 }
 
 /*

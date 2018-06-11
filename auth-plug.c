@@ -628,7 +628,7 @@ int mosquitto_auth_acl_check(void *userdata, const char *clientid, const char *u
 	 * id to bypass ACL checks (or have a username/client id that cannot
 	 * publish or receive messages to its own place in the hierarchy).
 	 */
-	if(username && strpbrk(username, "+#/")){
+	if(username && strpbrk(username, "#/")){        //Venkat: Commenting out + here for use of emails +. Need to review this further later
 		_log(MOSQ_LOG_NOTICE, "ACL denying access to client with dangerous username \"%s\"", username);
 		return MOSQ_DENY_ACL;
 	}
